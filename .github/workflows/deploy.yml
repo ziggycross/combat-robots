@@ -1,0 +1,64 @@
+name: Build & Deploy Site
+
+# Triggers:
+#  - push to main (actual code changes)
+#  - repository_dispatch "sanity-publish" (fired by a Sanity webhook whenever
+#    content is published — see web/README.md for the webhook setup)
+#  - manual run from the Actions tab
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy.yml'
+  repository_dispatch:
+    types: [sanity-publish]
+  workflow_dispatch:
+
+# Only one deploy runs at a time. If a newer trigger comes in while a run is
+# still in its debounce wait (or even mid-build), the newer run cancels the
+# older one. Combined with the `sleep` debounce step below, this means a
+# burst of rapid Sanity publishes collapses into a single build — only the
+# last trigger in the quiet window actually completes.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Debounce: wait for a quiet period before doing any real work. Pushes
+      # to `main` skip the wait since those are deliberate code changes, not
+      # a flurry of CMS edits.
+      - name: Debounce rapid content publishes
+        if: github.event_name == 'repository_dispatch'
+        run: sleep 300 # 5 minutes — tune as needed
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build (fetches latest content from Sanity)
+        working-directory: web
+        run: npm run build
+
+      - name: Deploy to gh-pages (single commit, no history)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web/dist
+          publish_branch: gh-pages
+          force_orphan: true # replace all history each deploy — no commit pileup

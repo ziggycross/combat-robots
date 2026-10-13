@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getAbout, getEvents, getSponsors, getGallery } from '../lib/sanity.js';
+
+const about = await getAbout();
+const events = await getEvents();
+const sponsors = await getSponsors();
+const gallery = await getGallery();
+---
+<Layout>
+  <img class="logo" src="/images/logo.gif" alt="Vancouver Combat Robots" />
+  {about.about.map((p) => <p>{p}</p>)}
+  <div class="buttons">
+    <a class="button" href={about.youtubeUrl} target="_blank" rel="noopener noreferrer">▶ Watch Live</a>
+    <a class="button" href={about.instagramUrl} target="_blank" rel="noopener noreferrer">★ Stay Updated</a>
+    <a class="button" href={about.discordUrl} target="_blank" rel="noopener noreferrer">🗨 Join Discord</a>
+    <a class="button" href={about.kofiUrl} target="_blank" rel="noopener noreferrer">♥ Donate</a>
+  </div>
+
+  <h1>Upcoming Battles</h1>
+  {events.map((e) => (
+    <div class="event">
+    {e.poster && <img src={e.poster} alt={`${e.title} poster`} class="poster" />}
+    <div class="event-info">
+      <h3>{e.title}</h3>
+      {e.description && <p>{e.description}</p>}
+      <p>
+        {new Date(e.startsAt).toLocaleString('en-US', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZone: 'America/Vancouver',
+        })}
+      </p>
+      <p>
+        <a href={e.mapsLink} target="_blank" rel="noopener noreferrer">
+          {e.location}
+        </a>
+      </p>
+    </div>
+    </div>
+  ))}
+
+  <h1>Sponsors</h1>
+  <div class="sponsors">
+    {sponsors.map((s) => (
+      <a href={s.url} target="_blank" rel="noopener noreferrer" title={`${s.name} - ${s.tier}`}>
+        <img src={s.logo} alt={s.name} />
+      </a>
+    ))}
+  </div>
+  <p>If you are interested in sponsoring, please contact us at <a href={`mailto:${about.email}`}>{about.email}</a> or on <a href={about.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a></p>
+
+  <h1>Gallery</h1>
+  <p><em>Coming soon...</em></p>
+  <div class="gallery">
+    {gallery.map((g) => (
+      <img src={g.url} alt={g.alt} loading="lazy" />
+    ))}
+  </div>
+</Layout>
