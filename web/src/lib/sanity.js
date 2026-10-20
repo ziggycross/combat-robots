@@ -25,7 +25,7 @@ async function fetchOr(query, fallback, label) {
   }
 }
 
-export async function getEvents() {
+async function fetchAllEvents() {
   const events = await fetchOr(
     `*[_type == "events"] | order(startsAt asc) {
       title, startsAt, location, mapsUrl, description,
@@ -35,11 +35,24 @@ export async function getEvents() {
     'events',
   );
 
-  // Keep events until 6 hours after they start.
+  // Events count as upcoming until 6 hours after they start.
   const cutoff = Date.now() - 6 * 3600 * 1000;
-  return events
-    .filter((e) => new Date(e.startsAt) >= cutoff)
-    .map((e) => ({
+  return {
+    upcoming: events.filter((e) => new Date(e.startsAt) >= cutoff).map(mapEvent),
+    past: events.filter((e) => new Date(e.startsAt) < cutoff).map(mapEvent).reverse(),
+  };
+}
+
+export async function getEvents() {
+  return (await fetchAllEvents()).upcoming;
+}
+
+export async function getPastEvents() {
+  return (await fetchAllEvents()).past;
+}
+
+function mapEvent(e) {
+  return ({
       title: e.title,
       description: e.description || '',
       poster: safeUrl(e.poster),
@@ -48,7 +61,7 @@ export async function getEvents() {
       mapsLink:
         safeUrl(e.mapsUrl) ||
         'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(e.location || ''),
-    }));
+  });
 }
 
 export async function getSponsors() {

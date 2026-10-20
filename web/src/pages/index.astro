@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getAbout, getEvents, getSponsors, getGallery } from '../lib/sanity.js';
+import { getAbout, getEvents, getSponsors, getGallery, getPastEvents } from '../lib/sanity.js';
 
 const about = await getAbout();
 const events = await getEvents();
+const pastEvents = await getPastEvents();
 const sponsors = await getSponsors();
 const gallery = await getGallery();
 ---
@@ -48,13 +49,64 @@ const gallery = await getGallery();
       </a>
     ))}
   </div>
-  <p>If you are interested in sponsoring, please contact us at <a href={`mailto:${about.email}`}>{about.email}</a> or on <a href={about.instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a></p>
+  <p>Interested in sponsoring? Contact us by <a href={`mailto:${about.email}`}>email</a> or <a href={about.instagramUrl} target="_blank" rel="noopener noreferrer">instagram</a>.</p>
+
+  {pastEvents.some((e) => e.poster) && (
+    <>
+      <h1>Past Events</h1>
+      <div class="past-events-carousel">
+        <button class="button carousel-btn" id="past-prev" aria-label="Scroll left" type="button">‹</button>
+        <div class="past-events" id="past-events">
+          {pastEvents.filter((e) => e.poster).map((e) => (
+            <img src={e.poster} alt={`${e.title} poster`} title={e.title} />
+          ))}
+        </div>
+        <button class="button carousel-btn" id="past-next" aria-label="Scroll right" type="button">›</button>
+      </div>
+    </>
+  )}
 
   <h1>Gallery</h1>
-  <p><em>Coming soon...</em></p>
   <div class="gallery">
     {gallery.map((g) => (
-      <img src={g.url} alt={g.alt} loading="lazy" />
+      <img src={g.url} alt={g.alt} loading="lazy" class="gallery-image" />
     ))}
   </div>
+
+  <dialog id="lightbox">
+    <img id="lightbox-image" alt="" />
+  </dialog>
+
+  <div class="footer-space"></div>
 </Layout>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('#lightbox');
+  const full = document.querySelector<HTMLImageElement>('#lightbox-image');
+
+  document.querySelectorAll<HTMLImageElement>('.gallery-image').forEach((img) => {
+    img.addEventListener('click', () => {
+      if (!dialog || !full) return;
+      full.src = img.src;
+      full.alt = img.alt;
+      dialog.showModal();
+    });
+  });
+
+  const strip = document.querySelector<HTMLElement>('#past-events');
+  const prev = document.querySelector<HTMLButtonElement>('#past-prev');
+  const next = document.querySelector<HTMLButtonElement>('#past-next');
+
+  const updateArrows = () => {
+    if (!strip || !prev || !next) return;
+    prev.disabled = strip.scrollLeft <= 1;
+    next.disabled = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1;
+  };
+  prev?.addEventListener('click', () => strip?.scrollBy({ left: -strip.clientWidth, behavior: 'smooth' }));
+  next?.addEventListener('click', () => strip?.scrollBy({ left: strip.clientWidth, behavior: 'smooth' }));
+  strip?.addEventListener('scroll', updateArrows);
+  updateArrows();
+
+  // Clicking anywhere (backdrop or image) closes it.
+  dialog?.addEventListener('click', () => dialog.close());
+</script>
